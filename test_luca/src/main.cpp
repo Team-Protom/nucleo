@@ -45,6 +45,8 @@
 #include <signal/controllers/motorcontroller.hpp>
 /* Quadrature encoder functionality */
 #include <hardware/encoders/quadratureencoder.hpp>
+/* Includo le librerie del sensore */
+#include <sensors/HCSR04.hpp>
 
 /// Serial interface with the another device(like single board computer). It's an built-in class of mbed based on the UART comunication, the inputs have to be transmiter and receiver pins. 
 RawSerial          g_rpi(USBTX, USBRX);
@@ -57,6 +59,11 @@ RawSerial          g_rpi(USBTX, USBRX);
  */
 hardware::drivers::CMotorDriverVnh g_motorVnhDriver(D3, D2, D4, -0.30, 0.30);
 hardware::drivers::CSteeringMotor g_steeringDriver(D9, -30.0, 30.0);
+
+
+// Inizializzo il sensore di prossimità
+
+
 
 /// Base sample time for the task manager. The measurement unit of base sample time is second.
 const float g_baseTick = 0.0001; // seconds
