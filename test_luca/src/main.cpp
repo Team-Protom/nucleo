@@ -45,8 +45,11 @@
 #include <signal/controllers/motorcontroller.hpp>
 /* Quadrature encoder functionality */
 #include <hardware/encoders/quadratureencoder.hpp>
+
 /* Includo le librerie del sensore */
 #include <sensors/HCSR04.hpp>
+/* Includo la libreria IO */
+#include <stdio.h>
 
 /// Serial interface with the another device(like single board computer). It's an built-in class of mbed based on the UART comunication, the inputs have to be transmiter and receiver pins. 
 RawSerial          g_rpi(USBTX, USBRX);
@@ -62,6 +65,7 @@ hardware::drivers::CSteeringMotor g_steeringDriver(D9, -30.0, 30.0);
 
 
 // Inizializzo il sensore di prossimità
+HCSR04 sensoreDiProssimita(PA_10,PA_11);
 
 
 
@@ -149,6 +153,10 @@ uint32_t setup()
  */
 uint32_t loop()
 {
+    /* INIZIO PROVA SENSORE */
+    printf("DISTANZA: %.3f\r\n", sensoreDiProssimita.getDistance_cm());
+    /* FINE PROVA SENSORE */
+    
     g_taskManager.mainCallback();
     return 0;
 }
