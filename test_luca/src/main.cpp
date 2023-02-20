@@ -65,7 +65,7 @@ hardware::drivers::CSteeringMotor g_steeringDriver(D9, -30.0, 30.0);
 
 
 // Inizializzo il sensore di prossimità
-HCSR04 sensoreDiProssimita(PA_10,PA_11);
+HCSR04 sensoreDiProssimita(PA_0,PA_1);
 
 
 
