@@ -43,8 +43,10 @@
 #include <periodics/encoderpublisher.hpp>
 /* Header file  for the controller functionality */
 #include <signal/controllers/motorcontroller.hpp>
+#include <signal/controllers/steercontroller.hpp>
 /* Quadrature encoder functionality */
 #include <hardware/encoders/quadratureencoder.hpp>
+#include <hardware/sensors/sonar.hpp>
 
 /// Serial interface with the another device(like single board computer). It's an built-in class of mbed based on the UART comunication, the inputs have to be transmiter and receiver pins. 
 RawSerial          g_rpi(USBTX, USBRX);
@@ -82,11 +84,20 @@ signal::controllers::CConverterSpline<2,1> l_volt2pwmConverter({-0.22166,0.22166
 /// Create a PID controller object, with the sampling time calculation equal to the one of the readings of the encoder;
 signal::controllers::siso::CPidController<double> l_pidController( 0.115000,0.810000,0.000222,0.040000,g_period_Encoder);
 
+/// Create a PID controller object, with the sampling time calculation equal to the one of the readings of the encoder;
+signal::controllers::siso::CPidController<double> s_pidController( 1, 0, 0, 0.040000, g_period_Encoder);
+
 /// Create a controller object based on the predefined PID controller, the quadrature encoder and the spline object;
 signal::controllers::CMotorController g_controller(g_quadratureEncoderTask, l_pidController, &l_volt2pwmConverter, -310299.0, 310299.0);
 
+/// Create a controller object;
+signal::controllers::SteerController s_controller(s_pidController, -0.103765, 0.103765);
+
+/// Create a sonar object
+hardware::sensors::sonar d_sonar(D5, D6, 0.3, 1); // PB4 & PB10
+
 /// Create the motion controller, which controls the robot states and the robot moves based on the transmitted command over the serial interface. 
-brain::CRobotStateMachine g_robotstatemachine(g_period_Encoder, g_rpi, g_motorVnhDriver,g_steeringDriver, &g_controller);
+brain::CRobotStateMachine g_robotstatemachine(g_period_Encoder, g_rpi, g_motorVnhDriver, g_quadratureEncoderTask, g_steeringDriver, &g_controller, &s_controller);
 
 /// Map for redirecting messages with the key and the callback functions. If the message key equals to one of the enumerated keys, than it will be applied the paired callback function.
 utils::serial::CSerialMonitor::CSerialSubscriberMap g_serialMonitorSubscribers = {
@@ -97,7 +108,8 @@ utils::serial::CSerialMonitor::CSerialSubscriberMap g_serialMonitorSubscribers =
     {"5",mbed::callback(&g_encoderPublisher,&periodics::CEncoderPublisher::serialCallbackENCODERPUBcommand)},
     {"6",mbed::callback(&l_pidController,&signal::controllers::siso::CPidController<double>::serialCallbackTUNEPIDcommand)},
     {"7",mbed::callback(&g_robotstatemachine,&brain::CRobotStateMachine::serialCallbackMOVEcommand)},
-    {"100",mbed::callback(&g_robotstatemachine,&brain::CRobotStateMachine::serialCallbackCONTROLcommand)}
+    {"8",mbed::callback(&g_robotstatemachine,&brain::CRobotStateMachine::serialCallbackCONTROLcommand)},
+    {"9",mbed::callback(&s_pidController,&signal::controllers::siso::CPidController<double>::serialCallbackTUNEPIDcommand)}
 };
 
 /// Create the serial monitor object, which decodes, redirects the messages and transmites the responses.
@@ -132,6 +144,17 @@ uint32_t setup()
     g_quadratureEncoderTask.startTimer();
     /// Start tperiodic task for the motion controller
     g_robotstatemachine.startTimer();
+    
+    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN;
+    //Configurazione del pin pb6 come output
+    /*GPIOB->MODER |= GPIO_MODER_MODE6_0;
+    GPIOB->OTYPER &= ~GPIO_OTYPER_OT6;
+    GPIOB->OSPEEDR |= GPIO_OSPEEDER_OSPEED6_1;
+    GPIOB->MODER &= ~GPIO_MODER_MODE8;
+    GPIOB->PUPDR |= GPIO_PUPDR_PUPD8_0;
+    EXTI->IMR |= EXTI_IMR_MR8;
+    EXTI->RTSR |= EXTI_RTSR_TR8;*/
+
     return 0;    
 }
 
@@ -154,10 +177,12 @@ uint32_t loop()
 int main() 
 {
     uint32_t  l_errorLevel = setup(); 
+
     while(!l_errorLevel) 
     {
         l_errorLevel = loop();
     }
     g_rpi.printf("exiting with code: %ld",l_errorLevel);
     return l_errorLevel;
+
 }

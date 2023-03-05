@@ -37,7 +37,7 @@ namespace hardware::drivers{
      *  @param f_pwm               pin connected to servo motor
      */
     CSteeringMotor::CSteeringMotor(PinName f_pwm)
-        :CSteeringMotor(f_pwm,-23.0,23.0)
+        :CSteeringMotor(f_pwm,-30.0,30.0)
         
     {
     };
@@ -73,7 +73,21 @@ namespace hardware::drivers{
      */
     void CSteeringMotor::setAngle(float f_angle)
     {
+        if (t_angle != f_angle)
+        {
+            t_angle = f_angle;
+        }
         m_pwm.write(conversion(f_angle));
+    };
+
+    void CSteeringMotor::setSteer(double f_pwm)
+    {
+        m_pwm.write(f_pwm);
+    };
+
+    float CSteeringMotor::getAngle()
+    {
+        return t_angle;
     };
 
     /** @brief  It converts angle degree to duty cycle for pwm signal. 

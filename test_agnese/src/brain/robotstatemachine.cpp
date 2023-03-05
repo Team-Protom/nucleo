@@ -38,7 +38,8 @@ namespace brain{
      * 
      * @param f_period_sec          period for controller execution in seconds
      * @param f_serialPort          reference to serial communication object
-     * @param f_dcMotor               reference to dc motor control interface
+     * @param f_dcMotor             reference to dc motor control interface
+     * @param f_encoder             reference to encoder interface
      * @param f_steeringControl     reference to steering motor control interface
      * @param f_dcMotorControl             reference to controller object
      */
@@ -46,14 +47,18 @@ namespace brain{
             float f_period_sec,
             RawSerial& f_serialPort,
             hardware::drivers::IMotorCommand&               f_dcMotor,
+            hardware::encoders::IEncoderGetter&             f_encoder,
             hardware::drivers::ISteeringCommand&            f_steeringControl,
-            signal::controllers::CMotorController*          f_dcMotorControl) 
+            signal::controllers::CMotorController*          f_dcMotorControl,
+            signal::controllers::SteerController*           f_steeringController) 
         : m_serialPort(f_serialPort)
         , m_dcMotor(f_dcMotor)
         , m_steeringControl(f_steeringControl)
+        , m_encoder(f_encoder)
         , m_period_sec(f_period_sec)
         , m_ispidActivated(true)
         , m_dcMotorControl(f_dcMotorControl)
+        , m_steeringController(f_steeringController)
         , m_timer()
 
     {
@@ -68,12 +73,13 @@ namespace brain{
     {   
         switch(m_state)
         {
-            // speed state - control the dc motor rotation speed and the steering angle. 
+            // controrl state - control the dc motor rotation speed and the steering angle. 
             case 1:
-                if(m_ispidActivated && m_dcMotorControl!=NULL) // Check the pid controller 
+                if(m_ispidActivated && m_dcMotorControl!=NULL && m_steeringController!= NULL) // Check the pid controller 
                 {
                     // Calculate control signal and return the controller state. 
                     int8_t l_isCorrect = m_dcMotorControl->control(); 
+                    int8_t s_isCorrect = m_steeringController->control();
                     // Check the state of the control method 
                     if( l_isCorrect == -1 ) // High consecutive control signal 
                     {
@@ -96,6 +102,7 @@ namespace brain{
                     }                    
                     // It's all right and can control the robot. 
                     m_dcMotor.setSpeed(m_dcMotorControl->getSpeed());
+                    m_steeringControl.setSteer(m_steeringController->getAngle());
                 }
                 break;
 
@@ -314,14 +321,15 @@ namespace brain{
      */ 
     void CRobotStateMachine::serialCallbackCONTROLcommand(char const * a, char * b)
     {
-        float speed, angle;
-        uint32_t l_res = sscanf(a, "%f;%f", &speed, &angle);
-        if (2 == l_res)
+        float speed, curve, yaw_rate, long_speed;
+        uint32_t l_res = sscanf(a, "%f;%f;%f", &speed, &curve, &yaw_rate);
+        if (3 == l_res)
         {
-             if( !m_ispidActivated && !m_dcMotor.inRange(speed)){ // Check the received control value
+            if( !m_ispidActivated && !m_dcMotor.inRange(speed)){ // Check the received control value
                 sprintf(b,"The speed command is too high;;");
                 return;
             }
+
             if( m_ispidActivated && !m_dcMotorControl->inRange(CRobotStateMachine::Mps2Rps(speed))){ //Check the received reference value
                 sprintf(b,"The speed reference is too high;;");
                 return;
@@ -332,23 +340,19 @@ namespace brain{
             }
             m_state=1;
             
-             if(!m_ispidActivated)
+            if(!m_ispidActivated)
             { // The pid controller is deactivated and the dc motor is controlled by user control signal by giving duty cycle of PWM. 
                 m_dcMotor.setSpeed(speed);
             }
             else
             {// The pid controller is activated and the dc motor speed is controlled by user control signal by giving the reference speed. 
-                m_dcMotorControl->setRef(CRobotStateMachine::Mps2Rps( speed )); // Set the reference of dc motor speed
+                m_dcMotorControl->setRef(CRobotStateMachine::Mps2Rps(speed)); // Set the reference of dc motor speed
             }
 
-            sprintf(b,"ack;;");
+            long_speed = CRobotStateMachine::Rps2Mps(m_encoder.getSpeedRps());
+            m_steeringController->setRef(curve*long_speed);
+            m_steeringController->setYaw(yaw_rate);
 
-            if( !m_steeringControl.inRange(angle)){ // Check the received steering angle
-                sprintf(b,"The steering angle command is too high;;");
-                return;
-            }
-
-            m_steeringControl.setAngle(angle); // control the steering angle 
             sprintf(b,"ack;;");
         }
         else
@@ -400,6 +404,16 @@ namespace brain{
      */
     float CRobotStateMachine::Mps2Rps(float f_vel_mps){
         return f_vel_mps * 150.0;
+    }
+
+    /**
+     * @brief Function to convert from angular velocity ( rotation per second ) of motor to linear velocity ( meter per second ) of robot.
+     * 
+     * @param f_vel angular velocity of motor
+     * @return float linear velocity of robot
+     */
+    float CRobotStateMachine::Rps2Mps(float f_vel){
+        return f_vel / 150.0;
     }
 
     /**

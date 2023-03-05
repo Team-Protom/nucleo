@@ -173,7 +173,7 @@ namespace controllers{
         float l_pwm_control = converter(l_v_control);
         
 
-        // Verify the number of high control signal and the measued rotation speed. When it's true, than the encoder doesn't measure the correct rotation speed,
+        // Verify the number of high control signal and the measured rotation speed. When it's true, than the encoder doesn't measure the correct rotation speed,
         // so the calculated control signal has a too high value. 
         if(m_nrHighPwm>m_maxNrHighPwm && l_MesRps==0){
             m_pid.clear();

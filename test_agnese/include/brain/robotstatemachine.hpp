@@ -40,6 +40,7 @@
 #include <hardware/drivers/steeringmotor.hpp>
 
 #include <signal/controllers/motorcontroller.hpp>
+#include <signal/controllers/steercontroller.hpp>
 
 
 namespace brain{
@@ -60,8 +61,10 @@ namespace brain{
             float                                               f_period_sec, 
             RawSerial&                                          f_serialPort, 
             hardware::drivers::IMotorCommand&                   f_dcMotor,
+            hardware::encoders::IEncoderGetter&                 f_encoder,
             hardware::drivers::ISteeringCommand&                f_steeringControl,
-            signal::controllers::CMotorController*              f_dcMotorControl = NULL);
+            signal::controllers::CMotorController*              f_dcMotorControl = NULL,
+            signal::controllers::SteerController*               f_steeringController = NULL);
         
         /* Start the Rtos timer for applying "_run" method  */
         void startTimer();
@@ -83,6 +86,8 @@ namespace brain{
         virtual void _run();
         /* Static function to convert from linear velocity ( centimeter per second ) of robot to angular velocity ( rotation per second ) of motor */
         static float Mps2Rps(float f_vel_cmps);
+        /* Static function to convert from angular velocity ( rotation per second ) of motor to linear velocity ( centimeter per second ) of robot to */
+        static float Rps2Mps(float f_vel);
         /* Static function to convert from meters to int */
         static float m2imp(float f_meters);
 
@@ -93,6 +98,8 @@ namespace brain{
         hardware::drivers::IMotorCommand&               m_dcMotor;
         /* Steering wheel control interface */
         hardware::drivers::ISteeringCommand&            m_steeringControl;
+        /* Encoder interface */
+        hardware::encoders::IEncoderGetter&             m_encoder;
         /* PEriod i nseconds */
         float                                           m_period_sec;
         /* State machine state */
@@ -101,6 +108,8 @@ namespace brain{
         bool                                            m_ispidActivated;       
         /* Speed Control for dc motor */
         signal::controllers::CMotorController*          m_dcMotorControl;
+        /* Speed Control for steerng motor */
+        signal::controllers::SteerController*           m_steeringController;
         /* Rtos  timer for periodically applying */
         LowPowerTicker                                  m_timer;
     }; // class CRobotStateMachine

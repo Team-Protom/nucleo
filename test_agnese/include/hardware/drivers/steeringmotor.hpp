@@ -45,6 +45,9 @@ namespace hardware::drivers{
         public:
             virtual void setAngle(float f_angle) = 0 ;
             virtual bool inRange(float f_angle) = 0 ;
+            virtual void setSteer(double f_pwm) = 0 ;
+            virtual float getAngle() = 0;
+            float t_angle = 0;
     };
 
 
@@ -65,7 +68,10 @@ namespace hardware::drivers{
         ~CSteeringMotor();
         /* Set angle */
         void setAngle(float f_angle); 
+        void setSteer(double f_pwm);
         bool inRange(float f_angle);
+        float getAngle();
+        float t_angle = 0;
     private:
         /* convert angle degree to duty cycle for pwm signal */
         float conversion(float f_angle); //angle to duty cycle
