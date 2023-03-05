@@ -58,10 +58,13 @@ OBJECTS += src/hardware/drivers/dcmotor.o
 OBJECTS += src/hardware/encoders/quadraturecounter.o
 OBJECTS += src/hardware/encoders/quadratureencoder.o
 
+OBJECTS += src/hardware/sensors/sonar.o
+
 OBJECTS += src/signal/filter/filter.o
 OBJECTS += src/signal/systemmodels/systemmodels.o
 OBJECTS += src/signal/controllers/motorcontroller.o
 OBJECTS += src/signal/controllers/converters.o
+OBJECTS += src/signal/controllers/steercontroller.o
 OBJECTS += src/signal/controllers/sisocontrollers.o
 
 OBJECTS += src/brain/robotstatemachine.o
