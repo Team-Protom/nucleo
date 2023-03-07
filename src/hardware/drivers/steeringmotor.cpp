@@ -73,9 +73,13 @@ namespace hardware::drivers{
      */
     void CSteeringMotor::setAngle(float f_angle)
     {
-        if (t_angle != f_angle)
+        if(f_angle < m_inf_limit)
         {
-            t_angle = f_angle;
+            f_angle = m_inf_limit;
+        }
+        if(f_angle > m_sup_limit)
+        {
+            f_angle = m_sup_limit;
         }
         m_pwm.write(conversion(f_angle));
     };
@@ -83,6 +87,11 @@ namespace hardware::drivers{
     void CSteeringMotor::setSteer(double f_pwm)
     {
         m_pwm.write(f_pwm);
+    };
+
+    void CSteeringMotor::setZero()
+    {
+        m_pwm.write(0.07525);
     };
 
     float CSteeringMotor::getAngle()

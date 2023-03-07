@@ -75,6 +75,9 @@ signal::filter::lti::siso::CIIRFilter<float,1,2> g_encoderFilter(utils::linalg::
 /// Create a quadrature encoder object. It periodically measueres the rotary speed of the motor and applies the given filter. 
 hardware::encoders::CQuadratureEncoderWithFilter g_quadratureEncoderTask(g_period_Encoder,hardware::encoders::CQuadratureCounter_TIM4::Instance(),2048,g_encoderFilter);
 
+/// Create a quadrature encoder object. It periodically measueres the rotary speed of the motor and applies the given filter. 
+//hardware::encoders::CQuadratureEncoder g_quadratureEncoder(g_period_Encoder,hardware::encoders::CQuadratureCounter_TIM4::Instance(),2048);
+
 ///Create an encoder publisher object to transmite the rotary speed of the dc motor to the RPi (if enabled)
 periodics::CEncoderPublisher   g_encoderPublisher(0.01/g_baseTick,g_quadratureEncoderTask,g_rpi);
 
@@ -94,22 +97,23 @@ signal::controllers::CMotorController g_controller(g_quadratureEncoderTask, l_pi
 signal::controllers::SteerController s_controller(s_pidController, -0.103765, 0.103765);
 
 /// Create a sonar object
-hardware::sensors::sonar d_sonar(D5, D6, 0.3, 1); // PB4 & PB10
+hardware::sensors::sonar d_sonar(g_rpi, D5, D6, 0.3, 1); // PB4 & PB10
 
 /// Create the motion controller, which controls the robot states and the robot moves based on the transmitted command over the serial interface. 
-brain::CRobotStateMachine g_robotstatemachine(g_period_Encoder, g_rpi, g_motorVnhDriver, g_quadratureEncoderTask, g_steeringDriver, &g_controller, &s_controller);
+brain::CRobotStateMachine g_robotstatemachine(g_period_Encoder, g_rpi, g_motorVnhDriver, g_quadratureEncoderTask, g_steeringDriver, d_sonar, &g_controller, &s_controller);
 
 /// Map for redirecting messages with the key and the callback functions. If the message key equals to one of the enumerated keys, than it will be applied the paired callback function.
 utils::serial::CSerialMonitor::CSerialSubscriberMap g_serialMonitorSubscribers = {
     {"1",mbed::callback(&g_robotstatemachine,&brain::CRobotStateMachine::serialCallbackSPEEDcommand)},
     {"2",mbed::callback(&g_robotstatemachine,&brain::CRobotStateMachine::serialCallbackSTEERcommand)},
     {"3",mbed::callback(&g_robotstatemachine,&brain::CRobotStateMachine::serialCallbackBRAKEcommand)},
-    {"4",mbed::callback(&g_robotstatemachine,&brain::CRobotStateMachine::serialCallbackACTIVPIDcommand)},
+    {"4",mbed::callback(&g_robotstatemachine,&brain::CRobotStateMachine::serialCallbackNOPIDcommand)},
     {"5",mbed::callback(&g_encoderPublisher,&periodics::CEncoderPublisher::serialCallbackENCODERPUBcommand)},
     {"6",mbed::callback(&l_pidController,&signal::controllers::siso::CPidController<double>::serialCallbackTUNEPIDcommand)},
     {"7",mbed::callback(&g_robotstatemachine,&brain::CRobotStateMachine::serialCallbackMOVEcommand)},
     {"8",mbed::callback(&g_robotstatemachine,&brain::CRobotStateMachine::serialCallbackCONTROLcommand)},
-    {"9",mbed::callback(&s_pidController,&signal::controllers::siso::CPidController<double>::serialCallbackTUNEPIDcommand)}
+    {"9",mbed::callback(&s_pidController,&signal::controllers::siso::CPidController<double>::serialCallbackTUNEPIDcommand)},
+    {"0",mbed::callback(&d_sonar,&hardware::sensors::sonar::serialcallbackDISTANCEcommand)}
 };
 
 /// Create the serial monitor object, which decodes, redirects the messages and transmites the responses.
@@ -144,16 +148,7 @@ uint32_t setup()
     g_quadratureEncoderTask.startTimer();
     /// Start tperiodic task for the motion controller
     g_robotstatemachine.startTimer();
-    
-    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN;
-    //Configurazione del pin pb6 come output
-    /*GPIOB->MODER |= GPIO_MODER_MODE6_0;
-    GPIOB->OTYPER &= ~GPIO_OTYPER_OT6;
-    GPIOB->OSPEEDR |= GPIO_OSPEEDER_OSPEED6_1;
-    GPIOB->MODER &= ~GPIO_MODER_MODE8;
-    GPIOB->PUPDR |= GPIO_PUPDR_PUPD8_0;
-    EXTI->IMR |= EXTI_IMR_MR8;
-    EXTI->RTSR |= EXTI_RTSR_TR8;*/
+    d_sonar.startTimer();
 
     return 0;    
 }
@@ -177,6 +172,7 @@ uint32_t loop()
 int main() 
 {
     uint32_t  l_errorLevel = setup(); 
+    d_sonar.startUpdates();
 
     while(!l_errorLevel) 
     {

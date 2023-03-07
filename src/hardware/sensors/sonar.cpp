@@ -1,9 +1,10 @@
 #include <hardware/sensors/sonar.hpp>>
 
 namespace hardware::sensors {
-    sonar::sonar(PinName trigPin, PinName echoPin, float update_Speed, float time_out)
+    sonar::sonar(RawSerial& f_serialPort, PinName trigPin, PinName echoPin, float update_Speed, float time_out)
     :triggerP(trigPin)
     ,echoP(echoPin)
+    ,m_serialPort(f_serialPort)
     {
         updateSpeed = update_Speed;
         timeout = time_out;
@@ -19,7 +20,7 @@ namespace hardware::sensors {
         {
             timer.reset ();
         }
-        start = timer.read_us ();
+        start = timer.read_us();
     };
 
     void sonar::startTimer()
@@ -42,7 +43,7 @@ namespace hardware::sensors {
             triggerP = 1;             
             wait_us(10);   
             triggerP = 0;
-            tout.attach(this,&sonar::trigger, timeout);     
+            tout.attach(this,&sonar::trigger, timeout); 
     };
     
     float sonar::getCurrentDistance(void)
@@ -71,5 +72,29 @@ namespace hardware::sensors {
     {
         return updateSpeed;
     };
+
+    /** \brief  Serial callback method for speed command
+     *
+     * Serial callback method for getting the distance from the sonar
+     *
+     * @param a                   string to read data 
+     * @param b                   string to write data 
+     * 
+     */
+    void sonar::serialcallbackDISTANCEcommand(char const * a, char * b)
+    {
+        float distance, temp;
+        uint32_t l_res = sscanf(a, "%f", &temp);
+        if(0 == l_res)
+        {
+            distance = sonar::getCurrentDistance();
+            m_serialPort.printf("@5:%5f;;\r\n", distance);
+        }
+        else
+        {
+            sprintf(b,"sintax error;;");
+        }
+    };
+
 
 }

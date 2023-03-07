@@ -16,7 +16,7 @@ namespace hardware::sensors {
     {
         public:
             /**iniates the class with the specified trigger pin, echo pin, update speed and timeout**/
-            sonar(PinName trigPin, PinName echoPin, float update_Speed, float time_out);
+            sonar(RawSerial& f_serialPort, PinName trigPin, PinName echoPin, float update_Speed, float time_out);
             /** returns the last measured distance**/
             float getCurrentDistance(void);
             /**pauses measuring the distance**/
@@ -28,9 +28,14 @@ namespace hardware::sensors {
             /**gets the speed at which updates are made**/
             float getUpdateSpeed(void);
             void startTimer();
+            /* Serial callback for getting the distance */
+            void serialcallbackDISTANCEcommand(char const * a, char * b);
 
             
         private:
+            /* reference to Serial object */
+            RawSerial& m_serialPort;
+
             DigitalOut triggerP;
             InterruptIn echoP;
             Timer timer;

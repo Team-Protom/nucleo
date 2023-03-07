@@ -38,6 +38,7 @@
 #include <utils/taskmanager/taskmanager.hpp>
 #include <hardware/drivers/dcmotor.hpp>
 #include <hardware/drivers/steeringmotor.hpp>
+#include <hardware/sensors/sonar.hpp>
 
 #include <signal/controllers/motorcontroller.hpp>
 #include <signal/controllers/steercontroller.hpp>
@@ -61,8 +62,9 @@ namespace brain{
             float                                               f_period_sec, 
             RawSerial&                                          f_serialPort, 
             hardware::drivers::IMotorCommand&                   f_dcMotor,
-            hardware::encoders::IEncoderGetter&                 f_encoder,
-            hardware::drivers::ISteeringCommand&                f_steeringControl,
+            hardware::encoders::IEncoderNonFilteredGetter&                 f_encoder,
+            hardware::drivers::ISteeringCommand&                f_steeringMotor,
+            hardware::sensors::sonar&                           f_sonar,
             signal::controllers::CMotorController*              f_dcMotorControl = NULL,
             signal::controllers::SteerController*               f_steeringController = NULL);
         
@@ -80,6 +82,8 @@ namespace brain{
         void serialCallbackMOVEcommand(char const * a, char * b);
         /* Serial callback method for controlling the system */
         void serialCallbackCONTROLcommand(char const * a, char *b);
+        /* Serial callback for parking */
+        void serialCallbackNOPIDcommand(char const * a, char *b);
 
     private:
         /* Contains the state machine, which control the lower level drivers (motor and steering) based the current state. */
@@ -97,9 +101,11 @@ namespace brain{
         /* Motor control interface */
         hardware::drivers::IMotorCommand&               m_dcMotor;
         /* Steering wheel control interface */
-        hardware::drivers::ISteeringCommand&            m_steeringControl;
+        hardware::drivers::ISteeringCommand&            m_steeringMotor;
+        /* Sonar object */
+        hardware::sensors::sonar&                       m_sonar;
         /* Encoder interface */
-        hardware::encoders::IEncoderGetter&             m_encoder;
+        hardware::encoders::IEncoderNonFilteredGetter&             m_encoder;
         /* PEriod i nseconds */
         float                                           m_period_sec;
         /* State machine state */

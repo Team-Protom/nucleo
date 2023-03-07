@@ -47,6 +47,7 @@ namespace hardware::drivers{
             virtual bool inRange(float f_angle) = 0 ;
             virtual void setSteer(double f_pwm) = 0 ;
             virtual float getAngle() = 0;
+            virtual void setZero() = 0;
             float t_angle = 0;
     };
 
@@ -69,6 +70,7 @@ namespace hardware::drivers{
         /* Set angle */
         void setAngle(float f_angle); 
         void setSteer(double f_pwm);
+        void setZero();
         bool inRange(float f_angle);
         float getAngle();
         float t_angle = 0;
