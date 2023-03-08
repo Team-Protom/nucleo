@@ -28,7 +28,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE
 */
 
-
+#define _USE_MATH_DEFINES
+#include <cmath> 
 #include <brain/robotstatemachine.hpp>
 
 namespace brain{
@@ -47,18 +48,18 @@ namespace brain{
             float f_period_sec,
             RawSerial&                                      f_serialPort,
             hardware::drivers::IMotorCommand&               f_dcMotor,
-            hardware::encoders::IEncoderNonFilteredGetter&             f_encoder,
-            hardware::drivers::ISteeringCommand&            f_steeringMotor,
+            hardware::encoders::IEncoderGetter&             f_encoder,
+            hardware::drivers::ISteeringCommand&            f_steeringControl,
             hardware::sensors::sonar&                       f_sonar,
             signal::controllers::CMotorController*          f_dcMotorControl,
             signal::controllers::SteerController*           f_steeringController) 
         : m_serialPort(f_serialPort)
         , m_dcMotor(f_dcMotor)
-        , m_steeringMotor(f_steeringMotor)
+        , m_steeringControl(f_steeringControl)
         , m_sonar(f_sonar)
         , m_encoder(f_encoder)
         , m_period_sec(f_period_sec)
-        , m_ispidActivated(true)
+        , m_ispidActivated(false)
         , m_dcMotorControl(f_dcMotorControl)
         , m_steeringController(f_steeringController)
         , m_timer()
@@ -109,7 +110,7 @@ namespace brain{
                         proportion = 1;
 
                     m_dcMotor.setSpeed(m_dcMotorControl->getSpeed()*proportion);
-                    m_steeringMotor.setSteer(m_steeringController->getAngle());
+                    m_steeringControl.setSteer(m_steeringController->getAngle());
                     if(distance < 12)
                     {   
                         m_dcMotor.brake();
@@ -172,34 +173,34 @@ namespace brain{
                 if(m_dcMotorControl!=NULL && m_steeringController!= NULL)
                 {
                     // Calculate control signal and return the controller state. 
-                    int8_t l_isCorrect = m_dcMotorControl->control();
+                    // int8_t l_isCorrect = m_dcMotorControl->control();
                     // Check the state of the control method 
-                    if( l_isCorrect == -1 ) // High consecutive control signal 
-                    {
-                        // In this case the encoder is working fine and measures too high speed rotation, than it changes to the braking state.  
-                        m_serialPort.printf("@1:Too high speed and the encoder working;;\r\n");
-                        m_dcMotor.brake();
-                        m_dcMotorControl->clearSpeed();
-                        m_state = 2;
-                        break;
-                    }
-                    else if (l_isCorrect == -2 ) // High consecutive control signal without observation value. 
-                    {
-                        // In this case the encoder fails and measures 0 rps, but the control signal had a series high values. 
-                        // This part protects the robot to run with high speed, when the encoder doesn't measure correctly or it's broker.
-                        m_serialPort.printf("@1:Encoder error;;\r\n");
-                        m_dcMotor.brake();
-                        m_dcMotorControl->clearSpeed();
-                        m_state = 2;
-                        break;
-                    }                    
-                    // It's all right and can control the robot. 
-                    m_dcMotor.setSpeed(m_dcMotorControl->getSpeed());
+                    // if( l_isCorrect == -1 ) // High consecutive control signal 
+                    // {
+                    //     // In this case the encoder is working fine and measures too high speed rotation, than it changes to the braking state.  
+                    //     m_serialPort.printf("@1:Too high speed and the encoder working;;\r\n");
+                    //     m_dcMotor.brake();
+                    //     m_dcMotorControl->clearSpeed();
+                    //     m_state = 2;
+                    //     break;
+                    // }
+                    // else if (l_isCorrect == -2 ) // High consecutive control signal without observation value. 
+                    // {
+                    //     // In this case the encoder fails and measures 0 rps, but the control signal had a series high values. 
+                    //     // This part protects the robot to run with high speed, when the encoder doesn't measure correctly or it's broker.
+                    //     m_serialPort.printf("@1:Encoder error;;\r\n");
+                    //     m_dcMotor.brake();
+                    //     m_dcMotorControl->clearSpeed();
+                    //     m_state = 2;
+                    //     break;
+                    // }                    
+                    // // It's all right and can control the robot. 
+                    // m_dcMotor.setSpeed(m_dcMotorControl->getSpeed());
                     
                     if(m_sonar.getCurrentDistance() < 5){
                         m_dcMotor.brake();
                         m_dcMotorControl->clearSpeed();
-                        m_steeringMotor.setZero();
+                        m_steeringControl.setZero();
                     }
                 }
                 break;
@@ -207,7 +208,7 @@ namespace brain{
             /* Emergency break for obstacles */
             case 5:
                 m_dcMotorControl->clearSpeed();
-                m_steeringMotor.setZero();
+                m_steeringControl.setZero();
                 if(m_sonar.getCurrentDistance() > 12)
                 {
                     m_state = 1;
@@ -278,11 +279,11 @@ namespace brain{
         uint32_t l_res = sscanf(a,"%f",&l_angle);
         if(1 == l_res)
         {
-            if( !m_steeringMotor.inRange(l_angle)){
+            if( !m_steeringControl.inRange(l_angle)){
                 sprintf(b,"The steering angle command is too high;;");
                 return;
             }
-            m_steeringMotor.setAngle(l_angle); // control the steering angle 
+            m_steeringControl.setAngle(l_angle); // control the steering angle 
             
             if(m_state == 3) {
                 m_dcMotorControl->clearDist();
@@ -358,12 +359,12 @@ namespace brain{
         uint32_t l_res = sscanf(a,"%f",&l_angle);
         if (1 == l_res)
         {
-            if( !m_steeringMotor.inRange(l_angle)){ // Check the received steering angle
+            if( !m_steeringControl.inRange(l_angle)){ // Check the received steering angle
                 sprintf(b,"The steering angle command is too high;;");
                 return;
             }
 
-            m_steeringMotor.setAngle(l_angle); // control the steering angle 
+            m_steeringControl.setAngle(l_angle); // control the steering angle 
             sprintf(b,"ack;;");
         }
         else
@@ -408,9 +409,9 @@ namespace brain{
                 m_dcMotorControl->setRef(CRobotStateMachine::Mps2Rps(speed)); // Set the reference of dc motor speed
             }
 
-            long_speed = CRobotStateMachine::Rps2Mps(m_encoder.getNonFilteredSpeedRps());
+            //long_speed = CRobotStateMachine::Rps2Mps(m_encoder.getNonFilteredSpeedRps());
 
-            m_serialPort.printf("@6:%5f;;\r\n", long_speed);
+            //m_serialPort.printf("@6:%5f;;\r\n", long_speed);
 
             m_steeringController->setRef(curve*long_speed);
             m_steeringController->setYaw(yaw_rate);
@@ -454,11 +455,23 @@ namespace brain{
                 m_dcMotorControl->clearDist();
             }
 
+            if(!m_ispidActivated)
+            { // The pid controller is deactivated and the dc motor is controlled by user control signal by giving duty cycle of PWM. 
+                m_dcMotor.setSpeed(m_dcMotorControl->converter(speed));
+            }
+            else
+            {// The pid controller is activated and the dc motor speed is controlled by user control signal by giving the reference speed. 
+                m_dcMotorControl->setRef(CRobotStateMachine::Mps2Rps(speed)); // Set the reference of dc motor speed
+
+            }
+
             m_state = 4;
             
-            m_dcMotorControl->setRef(CRobotStateMachine::Mps2Rps(speed)); // Set the reference of dc motor speed
-
-            m_steeringMotor.setAngle(angle);
+            
+            m_steeringControl.setAngle(angle);
+            //char giri = m_encoder.getSpeedRps();
+            //float long_speed = CRobotStateMachine::Rps2Mps(m_encoder.getSpeedRps());
+            //sprintf("@6:%f;;\r\n", &giri);
 
             sprintf(b,"ack;;");
         }
@@ -516,11 +529,11 @@ namespace brain{
     /**
      * @brief Function to convert from angular velocity ( rotation per second ) of motor to linear velocity ( meter per second ) of robot.
      * 
-     * @param f_vel angular velocity of motor
+     * @param f_vel angular velocity of encoder
      * @return float linear velocity of robot
      */
     float CRobotStateMachine::Rps2Mps(float f_vel){
-        return f_vel / 150.0;
+        return 2*M_PI*0.00765*f_vel;
     }
 
     /**

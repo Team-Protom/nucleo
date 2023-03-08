@@ -80,14 +80,15 @@ namespace signal
                 int8_t control();
                 /* Distance action */
                 int8_t doneDist();
+                /* PWM converter */
+                double converter(double f_u);
+
 
                 bool inRange(double f_RefRps);
                 bool distInRange(double f_RefDist);
 
             private:
-                /* PWM converter */
-                double converter(double f_u);
-
+               
                 /* Enconder object reference */
                 hardware::encoders::IEncoderGetter&     m_encoder;
                 /* PID object reference */

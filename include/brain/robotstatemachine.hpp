@@ -62,8 +62,8 @@ namespace brain{
             float                                               f_period_sec, 
             RawSerial&                                          f_serialPort, 
             hardware::drivers::IMotorCommand&                   f_dcMotor,
-            hardware::encoders::IEncoderNonFilteredGetter&                 f_encoder,
-            hardware::drivers::ISteeringCommand&                f_steeringMotor,
+            hardware::encoders::IEncoderGetter&                 f_encoder,
+            hardware::drivers::ISteeringCommand&                f_steeringControl,
             hardware::sensors::sonar&                           f_sonar,
             signal::controllers::CMotorController*              f_dcMotorControl = NULL,
             signal::controllers::SteerController*               f_steeringController = NULL);
@@ -101,11 +101,11 @@ namespace brain{
         /* Motor control interface */
         hardware::drivers::IMotorCommand&               m_dcMotor;
         /* Steering wheel control interface */
-        hardware::drivers::ISteeringCommand&            m_steeringMotor;
+        hardware::drivers::ISteeringCommand&            m_steeringControl;
         /* Sonar object */
         hardware::sensors::sonar&                       m_sonar;
         /* Encoder interface */
-        hardware::encoders::IEncoderNonFilteredGetter&             m_encoder;
+        hardware::encoders::IEncoderGetter&             m_encoder;
         /* PEriod i nseconds */
         float                                           m_period_sec;
         /* State machine state */
